@@ -19,8 +19,6 @@ export default function HomeStack() {
       <Stack.Screen name="index" options={{ title: 'Mattdigging', headerRight: SearchButton }} />
       <Stack.Screen name="search" options={{ title: 'Search' }} />
       <Stack.Screen name="hidden-gems" options={{ title: 'Hidden Gems' }} />
-      <Stack.Screen name="playlists" options={{ title: 'Playlists' }} />
-      <Stack.Screen name="playlist" options={{ title: '' }} />
     </Stack>
   );
 }

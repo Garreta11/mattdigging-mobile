@@ -87,7 +87,7 @@ export default function Search() {
         return (
           <Pressable
             style={({ pressed }) => [styles.row, pressed && styles.pressed]}
-            onPress={() => router.push({ pathname: '/playlist', params: { type: item.type, value: item.value } })}>
+            onPress={() => router.push({ pathname: '/playlists/playlist', params: { type: item.type, value: item.value } })}>
             <View style={[styles.photo, styles.iconBox]}>
               <Feather name={item.icon} size={20} color={colors.text} />
             </View>

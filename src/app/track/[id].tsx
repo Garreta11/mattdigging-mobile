@@ -21,7 +21,7 @@ const goTo = (href: Href) => {
 };
 
 const openPlaylist = (type: PlaylistFilter, value: string) =>
-  goTo({ pathname: '/playlist', params: { type, value } });
+  goTo({ pathname: '/playlists/playlist', params: { type, value } });
 
 // Track details, opened as a modal. Mirrors frontend/src/components/TrackModal.
 export default function TrackDetail() {

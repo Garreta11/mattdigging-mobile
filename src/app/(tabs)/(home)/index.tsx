@@ -1,23 +1,28 @@
-import { NavRow } from '@/components/NavRow';
+import { StyleSheet, View } from 'react-native';
+
+import { Room } from '@/components/Room';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
+import { space } from '@/theme';
 
-// Native replacement for the website's 3D room: one card per object in the room.
+// Home: the website's room. Tap the shelf, the chest, the lava lamp or the picture on the wall.
 export default function Home() {
   return (
     <Screen>
-      <Text variant="label">Start digging</Text>
-      <Text>Rare tracks, hidden gems and weekly selections handpicked for the true music digger.</Text>
+      <Room />
 
-      <NavRow href="/hidden-gems" icon="archive" title="Hidden Gems" subtitle="Open the chest" />
-      <NavRow
-        href={{ pathname: '/playlist', params: { type: 'mood', value: 'lava-lamp' } }}
-        icon="sun"
-        title="Lava Lamp"
-        subtitle="Switch on the lamp"
-      />
-      <NavRow href="/playlists" icon="sliders" title="Playlists" subtitle="By mood, genre, country, year or season" />
-      <NavRow href="/selections" icon="book-open" title="Weekly Selections" subtitle="From the shelf" />
+      <View style={styles.hint}>
+        <Text variant="label">Start digging</Text>
+        <Text variant="small">
+          Tap the record shelf for weekly selections, the chest for hidden gems, or switch on the lava lamp.
+        </Text>
+      </View>
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  hint: {
+    gap: space[2],
+  },
+});

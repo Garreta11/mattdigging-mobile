@@ -33,6 +33,7 @@ export default function TabsLayout() {
         tabBarLabelStyle: { fontFamily: fonts.body },
       }}>
       <Tabs.Screen name="(home)" options={{ title: 'Home', tabBarIcon: tabIcon('home') }} />
+      <Tabs.Screen name="playlists" options={{ title: 'Playlists', tabBarIcon: tabIcon('disc') }} />
       <Tabs.Screen name="artists" options={{ title: 'Artists', tabBarIcon: tabIcon('users') }} />
       <Tabs.Screen name="selections" options={{ title: 'Selections', tabBarIcon: tabIcon('calendar') }} />
       <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: tabIcon('user') }} />
