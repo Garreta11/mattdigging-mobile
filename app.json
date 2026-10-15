@@ -19,7 +19,12 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+      ]
     },
     "web": {
       "output": "static",
@@ -49,6 +54,13 @@
       "typedRoutes": true,
       "reactCompiler": true
     },
-    "backgroundColor": "#0A1111"
+    "backgroundColor": "#0A1111",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "b7e20936-3211-42d5-810c-d5b5c99448b6"
+      }
+    },
+    "owner": "jordigarreta"
   }
 }
