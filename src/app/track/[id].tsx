@@ -5,6 +5,7 @@ import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 're
 import { useTrack, type PlaylistFilter } from '@/api/content';
 import { Button } from '@/components/Button';
 import { Chip } from '@/components/Chip';
+import { FavoriteButton } from '@/components/FavoriteButton';
 import { QueryState } from '@/components/QueryState';
 import { Text } from '@/components/Text';
 import { storageUrl } from '@/lib/storage';
@@ -63,11 +64,16 @@ export default function TrackDetail() {
         </Pressable>
       ) : null}
 
-      <Button
-        title={isCurrent ? 'Playing' : 'Play'}
-        disabled={isCurrent}
-        onPress={() => playQueue([track], 0, track.title)}
-      />
+      <View style={styles.actions}>
+        <Button
+          title={isCurrent ? 'Playing' : 'Play'}
+          icon="play"
+          disabled={isCurrent}
+          onPress={() => playQueue([track], 0, track.title)}
+          style={styles.playButton}
+        />
+        <FavoriteButton trackId={track.id} size={28} />
+      </View>
 
       {track.description ? <Text>{track.description}</Text> : null}
 
@@ -156,6 +162,14 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.6,
+  },
+  actions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space[4],
+  },
+  playButton: {
+    flex: 1,
   },
   link: {
     textDecorationLine: 'underline',

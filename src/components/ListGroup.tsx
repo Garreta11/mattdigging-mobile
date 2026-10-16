@@ -36,25 +36,31 @@ type RowProps = {
   onPress?: () => void;
   /** Shows an "opens outside the app" arrow instead of the chevron. */
   external?: boolean;
+  /** Red, for actions like "Log out". */
+  danger?: boolean;
 };
 
-export function ListRow({ icon, title, subtitle, href, onPress, external }: RowProps) {
+// Rows without href/onPress are plain information: no chevron, not tappable.
+export function ListRow({ icon, title, subtitle, href, onPress, external, danger }: RowProps) {
   const press = onPress ?? (href ? () => router.push(href) : undefined);
+  const tint = danger ? colors.error : colors.text;
 
   return (
     <Pressable
       onPress={press}
       disabled={!press}
-      accessibilityRole={external ? 'link' : 'button'}
+      accessibilityRole={press ? (external ? 'link' : 'button') : 'text'}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
       <View style={styles.icon}>
-        <Feather name={icon} size={18} color={colors.text} />
+        <Feather name={icon} size={18} color={tint} />
       </View>
       <View style={styles.texts}>
-        <Text>{title}</Text>
+        <Text style={{ color: tint }}>{title}</Text>
         {subtitle ? <Text variant="small">{subtitle}</Text> : null}
       </View>
-      <Feather name={external ? 'external-link' : 'chevron-right'} size={18} color={colors.textSubtle} />
+      {press && !danger ? (
+        <Feather name={external ? 'external-link' : 'chevron-right'} size={18} color={colors.textSubtle} />
+      ) : null}
     </Pressable>
   );
 }

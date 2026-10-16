@@ -4,6 +4,7 @@ import { router, Stack } from 'expo-router';
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { Button } from '@/components/Button';
+import { FavoriteButton } from '@/components/FavoriteButton';
 import { Text } from '@/components/Text';
 import { storageUrl } from '@/lib/storage';
 import { PlayButton } from '@/player/PlayButton';
@@ -52,9 +53,12 @@ export default function NowPlaying() {
       />
 
       <View style={styles.texts}>
-        <Text variant="h2" numberOfLines={2}>
-          {current.title}
-        </Text>
+        <View style={styles.titleRow}>
+          <Text variant="h2" numberOfLines={2} style={styles.title}>
+            {current.title}
+          </Text>
+          <FavoriteButton trackId={current.id} size={26} />
+        </View>
         {current.artist ? (
           <Pressable
             accessibilityRole="link"
@@ -116,6 +120,14 @@ const styles = StyleSheet.create({
   loginButton: {
     alignSelf: 'flex-start',
     marginTop: space[2],
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: space[3],
+  },
+  title: {
+    flex: 1,
   },
   artistLink: {
     textDecorationLine: 'underline',

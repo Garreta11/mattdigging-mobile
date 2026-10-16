@@ -157,3 +157,20 @@ export const useSearch = (query: string) => {
     placeholderData: keepPreviousData,
   });
 };
+
+// ── Random play (Home) ───────────────────────────────────────────────────────
+
+/**
+ * The list the website's player picks random tracks from:
+ * every published track for members, only the free ones otherwise.
+ */
+export const usePlayerTracks = (isMember: boolean, enabled = true) =>
+  useQuery({
+    queryKey: ['player-tracks', isMember ? 'member' : 'free'],
+    queryFn: async () => {
+      const tracks = await apiFetch<Track[]>(isMember ? '/tracks/player' : '/tracks/player/free');
+      // These responses have no artist_id; the player uses it for its artist link.
+      return tracks.map((t) => ({ ...t, artist_id: t.artist_id ?? t.artist?.id }));
+    },
+    enabled,
+  });

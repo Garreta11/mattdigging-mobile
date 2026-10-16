@@ -5,6 +5,7 @@ import { memo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import type { Track } from '@/api/types';
+import { FavoriteButton } from '@/components/FavoriteButton';
 import { Text } from '@/components/Text';
 import { storageUrl } from '@/lib/storage';
 import { colors, radius, space } from '@/theme';
@@ -48,7 +49,8 @@ export const TrackRow = memo(function TrackRow({ track, index, isActive, onPress
           </Text>
         ) : null}
       </View>
-      {/* Track details (genres, moods…). A separate Pressable, so it does not start playback. */}
+      {/* Separate Pressables (heart, details), so tapping them does not start playback. */}
+      <FavoriteButton trackId={track.id} />
       <Pressable
         onPress={() => router.push({ pathname: '/track/[id]', params: { id: track.id } })}
         hitSlop={12}
