@@ -3,6 +3,7 @@ import { Image } from 'expo-image';
 import { router, Stack } from 'expo-router';
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
+import { Button } from '@/components/Button';
 import { Text } from '@/components/Text';
 import { storageUrl } from '@/lib/storage';
 import { PlayButton } from '@/player/PlayButton';
@@ -12,7 +13,7 @@ import { colors, radius, space } from '@/theme';
 
 // Full-screen player, opened as a modal from the mini-player.
 export default function NowPlaying() {
-  const { current, queueName, error, next, previous } = usePlayer();
+  const { current, queueName, error, errorStatus, next, previous } = usePlayer();
   const { width } = useWindowDimensions();
   const coverSize = Math.min(width - space[5] * 2, 420);
 
@@ -67,6 +68,10 @@ export default function NowPlaying() {
         ) : null}
         {meta ? <Text variant="small">{meta}</Text> : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
+        {/* 401 = not logged in: logging in fixes it. (403 = not a member: the message says so.) */}
+        {errorStatus === 401 ? (
+          <Button title="Log in" onPress={() => router.push('/login')} style={styles.loginButton} />
+        ) : null}
       </View>
 
       <ProgressBar interactive />
@@ -107,6 +112,10 @@ const styles = StyleSheet.create({
   },
   error: {
     color: colors.error,
+  },
+  loginButton: {
+    alignSelf: 'flex-start',
+    marginTop: space[2],
   },
   artistLink: {
     textDecorationLine: 'underline',

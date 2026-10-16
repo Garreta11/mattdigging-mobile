@@ -9,8 +9,9 @@ import {
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Platform } from 'react-native';
 
-import { apiFetch } from '@/api/client';
+import { ApiError, apiFetch } from '@/api/client';
 import type { Track } from '@/api/types';
+import { useAuth } from '@/auth/AuthProvider';
 import { storageUrl } from '@/lib/storage';
 
 type PlayerContextValue = {
@@ -23,6 +24,8 @@ type PlayerContextValue = {
   /** True while the signed audio URL is being fetched. */
   isLoading: boolean;
   error: string | null;
+  /** HTTP status behind `error`, e.g. 401 (log in needed) or 403 (members only). */
+  errorStatus: number | null;
   playQueue: (tracks: Track[], startIndex: number, name: string) => void;
   togglePlay: () => void;
   next: () => void;
@@ -31,8 +34,16 @@ type PlayerContextValue = {
 
 const PlayerContext = createContext<PlayerContextValue | null>(null);
 
-// Signed URLs from the backend last 24h; reuse them for 23h.
-const STREAM_URL_TTL = 23 * 60 * 60 * 1000;
+type StreamResponse = { url: string; expiresInSeconds?: number };
+
+// The backend says how long each signed URL is valid (2 hours today). Reuse it until
+// 10 minutes before it expires, then ask for a fresh one.
+const STREAM_URL_SAFETY_MARGIN = 10 * 60 * 1000;
+const STREAM_URL_DEFAULT_TTL = 60 * 60 * 1000;
+const streamUrlStaleTime = (query: { state: { data?: StreamResponse } }) => {
+  const seconds = query.state.data?.expiresInSeconds;
+  return seconds ? Math.max(0, seconds * 1000 - STREAM_URL_SAFETY_MARGIN) : STREAM_URL_DEFAULT_TTL;
+};
 
 // Lock screen / notification controls need the expo-audio config plugin (app.json), which
 // only applies to our own builds. Expo Go ("storeClient") can't use it, so skip them there.
@@ -48,6 +59,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [index, setIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
+  const userId = useAuth().session?.user.id;
 
   // Bumped on every load: if the user taps another track before the URL arrives,
   // the older (slower) request is ignored.
@@ -71,16 +84,19 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       setQueue(tracks);
       setIndex(i);
       setError(null);
+      setErrorStatus(null);
       setIsLoading(true);
       player.pause();
 
       try {
         // Audio is fetched through the backend's /tracks/:id/stream (a signed URL),
         // not a public Storage URL, so it keeps working once the bucket is private.
+        // Member tracks need a logged-in member (the token is sent by apiFetch); the user id is
+        // part of the key so a URL fetched for one account is never reused after logging out.
         const { url } = await queryClient.fetchQuery({
-          queryKey: ['stream', track.id],
-          queryFn: () => apiFetch<{ url: string }>(`/tracks/${track.id}/stream`),
-          staleTime: STREAM_URL_TTL,
+          queryKey: ['stream', track.id, userId ?? 'guest'],
+          queryFn: () => apiFetch<StreamResponse>(`/tracks/${track.id}/stream`),
+          staleTime: streamUrlStaleTime,
         });
         if (id !== loadId.current) return;
 
@@ -108,13 +124,27 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           }
         }
       } catch (err) {
-        if (id === loadId.current) setError(err instanceof Error ? err.message : 'Could not play this track.');
+        if (id === loadId.current) {
+          // 401 = not logged in, 403 = not a member (the backend's message says which).
+          setError(err instanceof Error ? err.message : 'Could not play this track.');
+          setErrorStatus(err instanceof ApiError ? err.status : null);
+        }
       } finally {
         if (id === loadId.current) setIsLoading(false);
       }
     },
-    [player, queryClient],
+    [player, queryClient, userId],
   );
+
+  // A track failed with 401 ("log in to listen") and the user has just logged in:
+  // retry it once for this account, so they don't have to find it again.
+  const retriedForUser = useRef<string | null>(null);
+  useEffect(() => {
+    if (userId && errorStatus === 401 && retriedForUser.current !== userId) {
+      retriedForUser.current = userId;
+      load(queue, index);
+    }
+  }, [userId, errorStatus, queue, index, load]);
 
   const playQueue = useCallback(
     (tracks: Track[], startIndex: number, name: string) => {
@@ -162,6 +192,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     current: queue[index] ?? null,
     isLoading,
     error,
+    errorStatus,
     playQueue,
     togglePlay,
     next,
