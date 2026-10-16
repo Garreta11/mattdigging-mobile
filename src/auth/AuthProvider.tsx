@@ -15,6 +15,8 @@ type AuthContextValue = {
   profile: Auth['profile'] | null;
   isMember: boolean;
   signOut: () => Promise<void>;
+  /** Permanently deletes the logged-in account (and cancels any membership). */
+  deleteAccount: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -53,12 +55,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryClient.removeQueries({ queryKey: ['auth'] });
   };
 
+  // Permanently deletes the account on the backend (DELETE /auth/account), which also cancels
+  // any active membership. Throws if the backend fails, so the screen can show the error.
+  const deleteAccount = async () => {
+    await apiFetch<{ deleted: boolean }>('/auth/account', { method: 'DELETE' });
+    // The user no longer exists: forget the saved login on this phone only (no server call needed).
+    await supabase.auth.signOut({ scope: 'local' });
+    queryClient.clear();
+  };
+
   const profile = userId ? (auth?.profile ?? null) : null;
   // Same rule as the website's AppContext.
   const isMember = !!session && (profile?.is_member === true || session.user.user_metadata?.is_member === true);
 
   return (
-    <AuthContext.Provider value={{ session, isReady, profile, isMember, signOut }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ session, isReady, profile, isMember, signOut, deleteAccount }}>{children}</AuthContext.Provider>
   );
 }
 

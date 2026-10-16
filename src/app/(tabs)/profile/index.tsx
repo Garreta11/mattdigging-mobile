@@ -2,7 +2,8 @@ import { Feather } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { ActivityIndicator, Linking, Pressable, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Alert, Linking, Pressable, StyleSheet, View } from 'react-native';
 
 import { useFavoriteIds, useFavoriteTracks } from '@/api/favorites';
 import { useAuth } from '@/auth/AuthProvider';
@@ -51,6 +52,7 @@ export default function Profile() {
             />
           ) : null}
           <ListRow icon="log-out" title="Log out" danger onPress={signOut} />
+          <DeleteAccountRow />
         </ListGroup>
       ) : null}
 
@@ -291,3 +293,51 @@ const styles = StyleSheet.create({
     marginTop: space[2],
   },
 });
+
+// Required by the App Store and Google Play: users must be able to delete their account in the app.
+// Two-step confirmation, because it cannot be undone.
+function DeleteAccountRow() {
+  const { deleteAccount, isMember } = useAuth();
+  const [deleting, setDeleting] = useState(false);
+
+  const confirmDelete = () =>
+    Alert.alert(
+      'Delete account?',
+      [
+        'Your account, favourites and login will be deleted permanently. This cannot be undone.',
+        isMember ? 'Your membership will be cancelled immediately and will not renew.' : '',
+      ]
+        .filter(Boolean)
+        .join('\n\n'),
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete account',
+          style: 'destructive',
+          onPress: async () => {
+            setDeleting(true);
+            try {
+              await deleteAccount();
+              Alert.alert('Account deleted', 'Your account and data have been deleted.');
+            } catch (err) {
+              setDeleting(false);
+              Alert.alert(
+                'Could not delete your account',
+                `${err instanceof Error ? err.message : 'Please try again.'}\n\nYou can also write to mattdigging@gmx.de.`,
+              );
+            }
+          },
+        },
+      ],
+    );
+
+  return (
+    <ListRow
+      icon="trash-2"
+      title={deleting ? 'Deleting account…' : 'Delete account'}
+      subtitle="Permanently delete your account and data"
+      danger
+      onPress={deleting ? undefined : confirmDelete}
+    />
+  );
+}
