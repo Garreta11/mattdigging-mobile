@@ -31,6 +31,11 @@
         "ascApiKeyPath": "./keys/AuthKey_K86N3KM6HF.p8",
         "ascApiKeyIssuerId": "0a523abf-8969-4c84-a372-987be2d3e062",
         "ascApiKeyId": "K86N3KM6HF"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./keys/google-play-service-account.json",
+        "track": "internal",
+        "releaseStatus": "completed"
       }
     }
   }
