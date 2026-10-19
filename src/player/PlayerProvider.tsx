@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQueryClient } from '@tanstack/react-query';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import {
@@ -12,6 +13,7 @@ import { Platform } from 'react-native';
 import { ApiError, apiFetch } from '@/api/client';
 import type { Track } from '@/api/types';
 import { useAuth } from '@/auth/AuthProvider';
+import { shuffle } from '@/lib/shuffle';
 import { storageUrl } from '@/lib/storage';
 
 type PlayerContextValue = {
@@ -27,6 +29,9 @@ type PlayerContextValue = {
   /** HTTP status behind `error`, e.g. 401 (log in needed) or 403 (members only). */
   errorStatus: number | null;
   playQueue: (tracks: Track[], startIndex: number, name: string) => void;
+  /** Random order: the current track keeps playing, the rest of the list is shuffled. */
+  isShuffled: boolean;
+  toggleShuffle: () => void;
   togglePlay: () => void;
   next: () => void;
   previous: () => void;
@@ -49,6 +54,12 @@ const streamUrlStaleTime = (query: { state: { data?: StreamResponse } }) => {
 // only applies to our own builds. Expo Go ("storeClient") can't use it, so skip them there.
 const SUPPORTS_LOCK_SCREEN = Constants.executionEnvironment !== ExecutionEnvironment.StoreClient;
 
+// The shuffle switch is remembered between launches.
+const SHUFFLE_KEY = 'player.shuffle';
+
+// `track` first, then the rest of the list in random order.
+const shuffledFrom = (tracks: Track[], track: Track) => [track, ...shuffle(tracks.filter((t) => t.id !== track.id))];
+
 export function PlayerProvider({ children }: { children: ReactNode }) {
   // One player for the whole app; tracks are swapped with player.replace().
   const player = useAudioPlayer(null, { updateInterval: 500 });
@@ -60,7 +71,16 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errorStatus, setErrorStatus] = useState<number | null>(null);
+  const [isShuffled, setIsShuffled] = useState(false);
+  // The list in its own order, to go back to when shuffle is turned off.
+  const [originalQueue, setOriginalQueue] = useState<Track[]>([]);
   const userId = useAuth().session?.user.id;
+
+  useEffect(() => {
+    AsyncStorage.getItem(SHUFFLE_KEY)
+      .then((value) => setIsShuffled(value === 'true'))
+      .catch(() => {});
+  }, []);
 
   // Bumped on every load: if the user taps another track before the URL arrives,
   // the older (slower) request is ignored.
@@ -151,10 +171,32 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       setQueueName(name);
       // Android 13+ only shows the media notification (with play/pause) after this permission.
       if (Platform.OS === 'android') requestNotificationPermissionsAsync().catch(() => {});
-      load(tracks, startIndex);
+      setOriginalQueue(tracks);
+      const start = tracks[startIndex];
+      // Shuffle on: the tapped track first, then the rest in random order.
+      if (isShuffled && start) load(shuffledFrom(tracks, start), 0);
+      else load(tracks, startIndex);
     },
-    [load],
+    [load, isShuffled],
   );
+
+  // Reorders the list without interrupting the track that is playing.
+  const toggleShuffle = useCallback(() => {
+    const turnOn = !isShuffled;
+    setIsShuffled(turnOn);
+    AsyncStorage.setItem(SHUFFLE_KEY, String(turnOn)).catch(() => {});
+
+    const current = queue[index];
+    if (!current) return;
+    if (turnOn) {
+      setQueue(shuffledFrom(originalQueue, current));
+      setIndex(0);
+    } else {
+      // Back to the list's own order, carrying on from the current track.
+      setQueue(originalQueue);
+      setIndex(Math.max(0, originalQueue.findIndex((t) => t.id === current.id)));
+    }
+  }, [isShuffled, queue, index, originalQueue]);
 
   // Same as the website: after the last track, start again from the first.
   const next = useCallback(() => {
@@ -194,6 +236,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     error,
     errorStatus,
     playQueue,
+    isShuffled,
+    toggleShuffle,
     togglePlay,
     next,
     previous,

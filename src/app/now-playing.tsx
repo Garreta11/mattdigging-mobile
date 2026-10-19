@@ -14,7 +14,7 @@ import { colors, radius, space } from '@/theme';
 
 // Full-screen player, opened as a modal from the mini-player.
 export default function NowPlaying() {
-  const { current, queueName, error, errorStatus, next, previous } = usePlayer();
+  const { current, queueName, error, errorStatus, next, previous, isShuffled, toggleShuffle } = usePlayer();
   const { width } = useWindowDimensions();
   const coverSize = Math.min(width - space[5] * 2, 420);
 
@@ -81,6 +81,17 @@ export default function NowPlaying() {
       <ProgressBar interactive />
 
       <View style={styles.controls}>
+        {/* Random order on/off: neon with a dot when on, like most music apps. */}
+        <Pressable
+          onPress={toggleShuffle}
+          hitSlop={12}
+          style={styles.sideButton}
+          accessibilityRole="switch"
+          accessibilityState={{ checked: isShuffled }}
+          accessibilityLabel="Shuffle">
+          <Feather name="shuffle" size={24} color={isShuffled ? colors.accent : colors.textMuted} />
+          <View style={[styles.dot, isShuffled && styles.dotOn]} />
+        </Pressable>
         <Pressable onPress={previous} hitSlop={12} accessibilityRole="button" accessibilityLabel="Previous track">
           <Feather name="skip-back" size={32} color={colors.text} />
         </Pressable>
@@ -90,6 +101,8 @@ export default function NowPlaying() {
         <Pressable onPress={next} hitSlop={12} accessibilityRole="button" accessibilityLabel="Next track">
           <Feather name="skip-forward" size={32} color={colors.text} />
         </Pressable>
+        {/* Same width as the shuffle button, so play stays in the centre. */}
+        <View style={styles.sideButton} />
       </View>
     </View>
   );
@@ -135,8 +148,21 @@ const styles = StyleSheet.create({
   controls: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: space[8],
+    justifyContent: 'space-between',
+    paddingHorizontal: space[2],
+  },
+  sideButton: {
+    width: 32,
+    alignItems: 'center',
+    gap: space[1],
+  },
+  dot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+  },
+  dotOn: {
+    backgroundColor: colors.accent,
   },
   playCircle: {
     width: 72,
