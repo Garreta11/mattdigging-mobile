@@ -1,9 +1,11 @@
 import type { Session } from '@supabase/supabase-js';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { Platform } from 'react-native';
 
 import { apiFetch } from '@/api/client';
 import type { Auth } from '@/api/types';
+import { getAppleAuthorizationCode } from '@/auth/apple';
 import { supabase } from '@/lib/supabase';
 
 type AuthContextValue = {
@@ -15,8 +17,11 @@ type AuthContextValue = {
   profile: Auth['profile'] | null;
   isMember: boolean;
   signOut: () => Promise<void>;
-  /** Permanently deletes the logged-in account (and cancels any membership). */
-  deleteAccount: () => Promise<void>;
+  /**
+   * Permanently deletes the logged-in account (and cancels any membership).
+   * Resolves false if an Apple user cancelled the Apple confirmation (nothing was deleted).
+   */
+  deleteAccount: () => Promise<boolean>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -58,10 +63,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Permanently deletes the account on the backend (DELETE /auth/account), which also cancels
   // any active membership. Throws if the backend fails, so the screen can show the error.
   const deleteAccount = async () => {
-    await apiFetch<{ deleted: boolean }>('/auth/account', { method: 'DELETE' });
+    // Users who signed in with Apple confirm with Apple once more, so the backend can revoke it.
+    let appleAuthorizationCode: string | undefined;
+    const usedApple = (session?.user.app_metadata?.providers as string[] | undefined)?.includes('apple');
+    if (usedApple && Platform.OS === 'ios') {
+      const code = await getAppleAuthorizationCode();
+      if (!code) return false;
+      appleAuthorizationCode = code;
+    }
+
+    await apiFetch<{ deleted: boolean }>('/auth/account', {
+      method: 'DELETE',
+      body: JSON.stringify({ appleAuthorizationCode }),
+    });
     // The user no longer exists: forget the saved login on this phone only (no server call needed).
     await supabase.auth.signOut({ scope: 'local' });
     queryClient.clear();
+    return true;
   };
 
   const profile = userId ? (auth?.profile ?? null) : null;

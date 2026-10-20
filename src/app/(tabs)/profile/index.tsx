@@ -349,7 +349,11 @@ function DeleteAccountRow() {
           onPress: async () => {
             setDeleting(true);
             try {
-              await deleteAccount();
+              // An Apple user cancelled the Apple confirmation: nothing was deleted.
+              if (!(await deleteAccount())) {
+                setDeleting(false);
+                return;
+              }
               Alert.alert('Account deleted', 'Your account and data have been deleted.');
             } catch (err) {
               setDeleting(false);

@@ -35,3 +35,19 @@ export async function signInWithApple(): Promise<boolean> {
   }
   return true;
 }
+
+/**
+ * Before deleting an Apple account, Apple requires the backend to revoke the sign-in.
+ * That needs a fresh one-time code, so the user confirms once more with the Apple sheet.
+ * Returns null when they cancel (the deletion is then aborted).
+ */
+export async function getAppleAuthorizationCode(): Promise<string | null> {
+  try {
+    const credential = await AppleAuthentication.signInAsync();
+    if (!credential.authorizationCode) throw new Error('Apple did not return an authorization code.');
+    return credential.authorizationCode;
+  } catch (err) {
+    if ((err as { code?: string }).code === 'ERR_REQUEST_CANCELED') return null;
+    throw err;
+  }
+}
