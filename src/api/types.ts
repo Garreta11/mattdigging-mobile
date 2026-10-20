@@ -69,5 +69,7 @@ export interface Auth {
     subscription_type: string | null;
     subscription_expires_at: string | null;
     member_since: string | null;
+    /** True once the one-month-free welcome offer has been redeemed. */
+    trial_used?: boolean;
   };
 }

@@ -10,6 +10,7 @@ import { useAuth } from '@/auth/AuthProvider';
 import { Button } from '@/components/Button';
 import { FAVORITES_QUEUE_NAME, FavoriteTrackList } from '@/components/FavoriteTrackList';
 import { ListGroup, ListRow } from '@/components/ListGroup';
+import { useMembershipNote } from '@/components/MembersOnly';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { env } from '@/lib/env';
@@ -22,7 +23,7 @@ const APP_VERSION = Constants.expoConfig?.version ?? '';
 const FAVORITES_PREVIEW = 5;
 
 export default function Profile() {
-  const { session, isReady, profile, isMember, signOut } = useAuth();
+  const { session, isReady, isMember, signOut } = useAuth();
 
   if (!isReady) {
     return (
@@ -38,19 +39,10 @@ export default function Profile() {
 
       {isMember ? <FavoritesPreview /> : null}
 
+      {session ? <MembershipGroup /> : null}
+
       {session ? (
         <ListGroup title="Account">
-          {isMember && profile?.member_since ? (
-            <ListRow
-              icon="calendar"
-              title="Member since"
-              subtitle={new Date(profile.member_since).toLocaleDateString('en-GB', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-              })}
-            />
-          ) : null}
           <ListRow icon="log-out" title="Log out" danger onPress={signOut} />
           <DeleteAccountRow />
         </ListGroup>
@@ -104,6 +96,46 @@ function AccountHeader() {
         </View>
       </View>
     </View>
+  );
+}
+
+const formatDate = (iso: string) =>
+  new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
+// Membership status. Read-only on purpose: the subscription is billed on the website (Stripe),
+// and the store rules don't allow linking to it from the app (see MembersOnly).
+function MembershipGroup() {
+  const { profile, isMember } = useAuth();
+  const note = useMembershipNote();
+  const plan = profile?.subscription_type;
+
+  if (!isMember) {
+    return (
+      <ListGroup title="Membership">
+        <ListRow icon="star" title="Free account" subtitle={note} />
+      </ListGroup>
+    );
+  }
+
+  return (
+    <ListGroup title="Membership">
+      <ListRow
+        icon="star"
+        title={plan ? `${plan.charAt(0).toUpperCase()}${plan.slice(1)} membership` : 'Membership'}
+        subtitle="Active"
+      />
+      {profile?.subscription_expires_at ? (
+        <ListRow icon="refresh-cw" title="Current period ends" subtitle={formatDate(profile.subscription_expires_at)} />
+      ) : null}
+      {profile?.member_since ? (
+        <ListRow icon="calendar" title="Member since" subtitle={formatDate(profile.member_since)} />
+      ) : null}
+      <ListRow
+        icon="settings"
+        title="Manage membership"
+        subtitle="Change plan, payment method or cancel from your account on the Mattdigging website."
+      />
+    </ListGroup>
   );
 }
 
