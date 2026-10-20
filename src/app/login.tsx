@@ -1,9 +1,12 @@
 import { Feather } from '@expo/vector-icons';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { Link, Stack, router } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/Button';
+import { signInWithApple } from '@/auth/apple';
+import { signInWithGoogle } from '@/auth/google';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { TextField } from '@/components/TextField';
@@ -35,6 +38,12 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // Sign in with Apple is iOS only (and needs iOS 13+).
+  const [appleAvailable, setAppleAvailable] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS === 'ios') AppleAuthentication.isAvailableAsync().then(setAppleAvailable);
+  }, []);
 
   // On the web: onChange={e => …e.target.value}. In RN, onChangeText gives the string directly.
   const update = (field: 'email' | 'password' | 'confirmPassword' | 'displayName' | 'username') => (value: string) => {
@@ -83,6 +92,22 @@ export default function Login() {
     if (error) throw error;
     setForm(EMPTY_FORM);
     setSuccess("We've sent a reset link to your email.");
+  };
+
+  // Google and Apple share the same flow: open the provider, then close the modal once logged in.
+  const handleProvider = (signIn: () => Promise<boolean>) => async () => {
+    setError(null);
+    setSuccess(null);
+    setLoading(true);
+    try {
+      const loggedIn = await signIn();
+      // On Android the redirect may already have navigated home; only close the modal if it's still open.
+      if (loggedIn && router.canGoBack()) router.back();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -177,6 +202,36 @@ export default function Login() {
         loading={loading}
       />
 
+      {mode !== 'forgot' && (
+        <>
+          <Text variant="small" style={styles.or}>
+            or
+          </Text>
+          {appleAvailable && (
+            <AppleAuthentication.AppleAuthenticationButton
+              buttonType={
+                mode === 'signup'
+                  ? AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP
+                  : AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN
+              }
+              buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+              cornerRadius={24}
+              style={styles.appleButton}
+              onPress={handleProvider(signInWithApple)}
+            />
+          )}
+          <Button variant="outline" title="Continue with Google" onPress={handleProvider(signInWithGoogle)} disabled={loading} />
+          {mode === 'signup' && (
+            <Text variant="small" style={styles.or}>
+              By continuing with {appleAvailable ? 'Apple or Google' : 'Google'} you accept the{' '}
+              <Link href="/terms" style={styles.link}>
+                Terms & Conditions
+              </Link>
+            </Text>
+          )}
+        </>
+      )}
+
       <View style={styles.switches}>
         {mode === 'login' && (
           <>
@@ -210,6 +265,14 @@ const styles = StyleSheet.create({
   },
   success: {
     color: colors.accent,
+  },
+  or: {
+    textAlign: 'center',
+    color: colors.textMuted,
+  },
+  appleButton: {
+    width: '100%',
+    height: 48,
   },
   switches: {
     gap: space[3],
