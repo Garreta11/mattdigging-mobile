@@ -1,4 +1,4 @@
-import { Feather } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { Link, Stack, router } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -101,8 +101,8 @@ export default function Login() {
     setLoading(true);
     try {
       const loggedIn = await signIn();
-      // On Android the redirect may already have navigated home; only close the modal if it's still open.
-      if (loggedIn && router.canGoBack()) router.back();
+      // Close the login modal and land on the home tab.
+      if (loggedIn) router.dismissTo('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.');
     } finally {
@@ -208,19 +208,21 @@ export default function Login() {
             or
           </Text>
           {appleAvailable && (
-            <AppleAuthentication.AppleAuthenticationButton
-              buttonType={
-                mode === 'signup'
-                  ? AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP
-                  : AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN
-              }
-              buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
-              cornerRadius={24}
-              style={styles.appleButton}
+            <Button
+              variant="outline"
+              title={mode === 'signup' ? 'Sign up with Apple' : 'Continue with Apple'}
+              leftIcon={<Ionicons name="logo-apple" size={20} color={colors.text} />}
               onPress={handleProvider(signInWithApple)}
+              disabled={loading}
             />
           )}
-          <Button variant="outline" title="Continue with Google" onPress={handleProvider(signInWithGoogle)} disabled={loading} />
+          <Button
+            variant="outline"
+            title="Continue with Google"
+            leftIcon={<Ionicons name="logo-google" size={18} color={colors.text} />}
+            onPress={handleProvider(signInWithGoogle)}
+            disabled={loading}
+          />
           {mode === 'signup' && (
             <Text variant="small" style={styles.or}>
               By continuing with {appleAvailable ? 'Apple or Google' : 'Google'} you accept the{' '}
@@ -269,10 +271,6 @@ const styles = StyleSheet.create({
   or: {
     textAlign: 'center',
     color: colors.textMuted,
-  },
-  appleButton: {
-    width: '100%',
-    height: 48,
   },
   switches: {
     gap: space[3],

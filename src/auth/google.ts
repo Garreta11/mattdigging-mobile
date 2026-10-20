@@ -19,11 +19,23 @@ export async function signInWithGoogle(): Promise<boolean> {
   });
   if (error) throw error;
 
-  const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-  if (result.type !== 'success') return false;
+  // On Android the redirect reopens the app through a normal deep link, and the browser session
+  // can end as "dismiss" even though it worked. So also listen for that link ourselves.
+  let linkedUrl: string | null = null;
+  const subscription = Linking.addEventListener('url', ({ url }) => {
+    if (url.startsWith(redirectTo)) linkedUrl = url;
+  });
+  let callbackUrl: string | null;
+  try {
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+    callbackUrl = result.type === 'success' ? result.url : linkedUrl;
+  } finally {
+    subscription.remove();
+  }
+  if (!callbackUrl) return false;
 
   // Supabase puts the tokens (or an error) after the # of the redirect URL.
-  const params = new URLSearchParams(result.url.split('#')[1] ?? '');
+  const params = new URLSearchParams(callbackUrl.split('#')[1] ?? '');
   const errorDescription = params.get('error_description');
   if (errorDescription) throw new Error(errorDescription);
 
